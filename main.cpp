@@ -35,9 +35,8 @@ public:
 void predictGesture(std::queue<cv::Mat>& sequence, torch::jit::script::Module& handModel, torch::jit::script::Module& gestureModel)
 {
     std::vector<torch::jit::IValue> inputs;
-    //torch::Tensor inputTensor = torch::zeros({ 1, keypoints * 2, framesPerSequence });
+    torch::Tensor inputTensor = torch::zeros({ 1, keypoints * 2, framesPerSequence });
     Timer timer;
-    float vec[1][framesPerSequence][keypoints * 2];
     // Extract keypoint location from the frames
     while (!sequence.empty())
     {
@@ -47,27 +46,17 @@ void predictGesture(std::queue<cv::Mat>& sequence, torch::jit::script::Module& h
         
         for (int i = 0; i < handKeypoints.size(); i++)
         {
-            if (handKeypoints[i].empty())
+            if (!handKeypoints[i].empty())
             {
-                vec[0][framesPerSequence - sequence.size()][2 * i] = 0.0;
-                vec[0][framesPerSequence - sequence.size()][2 * i + 1] = 0.0;
-            }
-            else
-            {
-                vec[0][framesPerSequence - sequence.size()][2 * i] = handKeypoints[i].begin()->second.x;
-                vec[0][framesPerSequence - sequence.size()][2 * i + 1] = handKeypoints[i].begin()->second.y;
+                inputTensor[0][2 * i][framesPerSequence - sequence.size()] = handKeypoints[i].begin()->second.x;
+                inputTensor[0][2 * i + 1][framesPerSequence - sequence.size()] = handKeypoints[i].begin()->second.y;
                 //memcpy(inputTensor[0][2*i][framesPerSequence - sequence.size()].data_ptr<float>(), &handKeypoints[i].begin()->second.x, sizeof(float));
                 //memcpy(inputTensor[0][2*i+1][framesPerSequence - sequence.size()].data_ptr<float>(), &handKeypoints[i].begin()->second.x, sizeof(float));
             }
         }
         sequence.pop();
     }
-
-    torch::Tensor f = torch::from_blob(std::data(vec), { 1, framesPerSequence, keypoints * 2 });
-    std::cout << f[0][0] << "\n";
-    f = f.transpose(1, 2);
-    std::cout << f[0][0] << "\n";
-    inputs.push_back(f);
+    inputs.push_back(inputTensor);
 
     auto output = gestureModel.forward(inputs).toTensor();
 
