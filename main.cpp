@@ -1,11 +1,14 @@
 #include <opencv2/opencv.hpp>
 #include <torch/script.h>
 #include <vector>
+#include <thread>
 
 #include "handKeyPoints.h"
 
 constexpr unsigned short framesPerSequence = 32;
 constexpr unsigned short keypoints = 21;
+
+const char* gestureName[] = { "WAWING" , "SCISSORS", "FLIP", "PUSH&PULL", "OPEN&CLOSE" };
 
 class Timer {
 private:
@@ -32,36 +35,33 @@ public:
 };
 
 
-void predictGesture(std::queue<cv::Mat>& sequence, torch::jit::script::Module& handModel, torch::jit::script::Module& gestureModel)
+void predictGesture(cv::Mat (&sequence)[framesPerSequence], torch::jit::script::Module &handModel, torch::jit::script::Module &gestureModel)
 {
     std::vector<torch::jit::IValue> inputs;
     torch::Tensor inputTensor = torch::zeros({ 1, keypoints * 2, framesPerSequence });
     Timer timer;
     // Extract keypoint location from the frames
-    while (!sequence.empty())
+    for (int i = 0; i < framesPerSequence; i++)
     {
         std::vector<std::map<float, cv::Point2f>> handKeypoints;
         std::vector<cv::Rect> handrect;
-        handKeypoints = pyramidinference(handModel, sequence.front(), handrect);
+        handKeypoints = pyramidinference(handModel, sequence[i], handrect);
         
-        for (int i = 0; i < handKeypoints.size(); i++)
+        for (int j = 0; j < handKeypoints.size(); j++)
         {
-            if (!handKeypoints[i].empty())
+            if (!handKeypoints[j].empty())
             {
-                inputTensor[0][2 * i][framesPerSequence - sequence.size()] = handKeypoints[i].begin()->second.x;
-                inputTensor[0][2 * i + 1][framesPerSequence - sequence.size()] = handKeypoints[i].begin()->second.y;
-                //memcpy(inputTensor[0][2*i][framesPerSequence - sequence.size()].data_ptr<float>(), &handKeypoints[i].begin()->second.x, sizeof(float));
-                //memcpy(inputTensor[0][2*i+1][framesPerSequence - sequence.size()].data_ptr<float>(), &handKeypoints[i].begin()->second.x, sizeof(float));
+                inputTensor[0][2 * j][i] = handKeypoints[j].begin()->second.x;
+                inputTensor[0][2 * j + 1][i] = handKeypoints[j].begin()->second.y;    
             }
         }
-        sequence.pop();
     }
     inputs.push_back(inputTensor);
 
     auto output = gestureModel.forward(inputs).toTensor();
 
     std::cout << output << '\n';
-    std::cout << "max: " << output.argmax(1).item().toInt() << '\n';
+    std::cout << "You performed " << gestureName[output.argmax(1).item().toInt()] << '\n';
 }
 
 int main()
@@ -84,7 +84,7 @@ int main()
 
     cv::Mat frame;
     
-    std::queue<cv::Mat> sequence;
+    cv::Mat sequence[framesPerSequence];
 
     while (1) {
         cap >> frame;
@@ -99,7 +99,7 @@ int main()
                 cap >> frame;
                 if (cv::waitKey(63) >= 0)
                     break;
-                sequence.push(frame.clone());
+                sequence[i] = frame.clone();
             }
             break;
         }
