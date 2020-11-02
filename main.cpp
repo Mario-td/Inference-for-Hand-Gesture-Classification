@@ -85,7 +85,6 @@ int main()
     while (1)
     {
         cv::Mat frame;
-
         cv::Mat sequence[framesPerSequence];
 
         while (1) {
