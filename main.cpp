@@ -82,31 +82,34 @@ int main()
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
 
-    cv::Mat frame;
-    
-    cv::Mat sequence[framesPerSequence];
+    while (1)
+    {
+        cv::Mat frame;
 
-    while (1) {
-        cap >> frame;
-        cv::imshow("Hand gestures", frame);
+        cv::Mat sequence[framesPerSequence];
 
-        if (cv::waitKey(30) >= 0)
-        {   
-            Timer timer;
-            for (int i = 0; i < framesPerSequence; i++)
+        while (1) {
+            cap >> frame;
+            cv::imshow("Hand gestures", frame);
+
+            if (cv::waitKey(30) >= 0)
             {
-                cv::imshow("Hand gestures", frame);
-                cap >> frame;
-                if (cv::waitKey(63) >= 0)
-                    break;
-                sequence[i] = frame.clone();
+                {
+                    Timer timer;
+                    for (int i = 0; i < framesPerSequence; i++)
+                    {
+                        cv::imshow("Hand gestures", frame);
+                        cap >> frame;
+                        if (cv::waitKey(63) >= 0)
+                            break;
+                        sequence[i] = frame.clone();
+                    }
+                }
+                predictGesture(sequence, handModel, gestureModel);
+                break;
             }
-            break;
         }
     }
-    cv::destroyWindow("Hand gestures");
-
-    predictGesture(sequence, handModel, gestureModel);
 
 	return 0;
 }
