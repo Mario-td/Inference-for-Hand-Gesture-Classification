@@ -34,8 +34,8 @@ public:
     }
 };
 
-
-void predictGesture(cv::Mat (&sequence)[framesPerSequence], torch::jit::script::Module &handModel, torch::jit::script::Module &gestureModel)
+void predictGesture(cv::Mat (&sequence)[framesPerSequence], torch::jit::script::Module &handModel,
+                    torch::jit::script::Module &gestureModel, bool &predicted, std::string& screenMsg)
 {
     std::vector<torch::jit::IValue> inputs;
     torch::Tensor inputTensor = torch::zeros({ 1, keypoints * 2, framesPerSequence });
@@ -59,9 +59,10 @@ void predictGesture(cv::Mat (&sequence)[framesPerSequence], torch::jit::script::
     inputs.push_back(inputTensor);
 
     auto output = gestureModel.forward(inputs).toTensor();
-
     std::cout << output << '\n';
-    std::cout << "You performed " << gestureName[output.argmax(1).item().toInt()] << '\n';
+    
+    screenMsg = "You performed " + std::string(gestureName[output.argmax(1).item().toInt()]);
+    predicted = true;
 }
 
 int main()
@@ -82,32 +83,62 @@ int main()
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
 
+    std::string screenMsg = "Press space bar and perform the gesture. Press esc to close";
+    std::string window = "Hand gesture classification";
+
     while (1)
     {
         cv::Mat frame;
         cv::Mat sequence[framesPerSequence];
 
-        while (1) {
+        while (1) 
+        {   
             cap >> frame;
-            cv::imshow("Hand gestures", frame);
-
-            if (cv::waitKey(30) >= 0)
+            putText(frame, screenMsg, cv::Point(20, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                    cv::Scalar(0, 0, 255), 1);
+            cv::imshow(window, frame);
+            int key = cv::waitKey(30);
+            if (key == 27) goto finish;
+            else if (key >= 0)
             {
                 {
                     Timer timer;
                     for (int i = 0; i < framesPerSequence; i++)
                     {
-                        cv::imshow("Hand gestures", frame);
-                        cap >> frame;
-                        if (cv::waitKey(63) >= 0)
+                        cv::imshow(window, frame);
+                        cap >> frame; 
+                        key = cv::waitKey(63);
+                        if (key == 27) goto finish;
+                        else if (key >= 0)
                             break;
                         sequence[i] = frame.clone();
                     }
                 }
-                predictGesture(sequence, handModel, gestureModel);
+                bool predicted = false;
+                std::thread thrd(std::ref(predictGesture), std::ref(sequence), 
+                                std::ref(handModel), std::ref(gestureModel),
+                                std::ref(predicted), std::ref(screenMsg));
+                
+                // Continue with open camera while the gesture is being predicted
+                while (1) {
+                    cap >> frame;
+                    putText(frame, "Predicting the gesture...", cv::Point(20, 20),
+                            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1);
+                    cv::imshow(window, frame);
+                    key = cv::waitKey(30);
+                    if (key == 27)
+                    {
+                        thrd.join();
+                        goto finish;
+                    }
+                    else if (key >= 0 || predicted)
+                        break;
+                }
+                thrd.join();
                 break;
             }
         }
     }
+    finish:
 	return 0;
 }
