@@ -1,6 +1,5 @@
 #include <opencv2/opencv.hpp>
 #include <torch/script.h>
-#include <vector>
 #include <thread>
 
 #include "handKeyPoints.h"
