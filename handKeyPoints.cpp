@@ -1,5 +1,7 @@
 #include "handKeyPoints.h"
 
+// Functions extracted from https://www.yangangwang.com/papers/WANG-SRH-2019-07.html, accessed on 07/11/2020
+
 void nmslocation(cv::Mat& src, std::map<float, cv::Point2f, std::greater<float>>& location, float threshold)
 {
 	// clear all the points
