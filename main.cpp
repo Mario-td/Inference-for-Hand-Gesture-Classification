@@ -46,11 +46,9 @@ void predictGesture(cv::Mat (&sequence)[framesPerSequence], torch::jit::script::
 int main(int argc, char** argv)
 {
     // Loads the model for hand keypoints detection and gesture classification
-    torch::jit::script::Module handModel = torch::jit::load("hand.pts", torch::kCUDA);
-    assert(handModel != nullptr);
+    torch::jit::script::Module handModel = torch::jit::load("../hand.pts", torch::kCUDA);
 
-    torch::jit::script::Module gestureModel = torch::jit::load("model.pt");
-    assert(gestureModel != nullptr);
+    torch::jit::script::Module gestureModel = torch::jit::load("../model.pt");
 
     // Opens the webcam
     cv::VideoCapture cap(0);
