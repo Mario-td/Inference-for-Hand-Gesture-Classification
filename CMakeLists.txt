@@ -3,12 +3,9 @@ project( InferenceHandGestures )
 
 find_package(Torch REQUIRED)  
 
-set(OpenCV_INCLUDE_DIRS ~/opencv-4.2.0/include)
-set(OpenCV_DIR /usr/local/share/opencv4)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 link_directories(${OpenCV_LIB_DIR})
-
 
 add_executable(InferenceHandGestures main.cpp handKeyPoints.cpp)
 
