@@ -9,14 +9,14 @@ constexpr unsigned short framesPerSequence = 32;
 constexpr unsigned short keypoints = 21;
 
 // Gesture labels
-const char* gestureName[] = { "WAWING" , "SCISSORS", "FLIP", "PUSH&PULL", "OPEN&CLOSE" };
+const char *gestureName[] = {"WAWING", "SCISSORS", "FLIP", "PUSH&PULL", "OPEN&CLOSE"};
 
 // Function for predicting the gesture from the sequence of frames
 void predictGesture(cv::Mat (&sequence)[framesPerSequence], torch::jit::script::Module &handModel,
-                    torch::jit::script::Module &gestureModel, bool &predicted, std::string& screenMsg)
+                    torch::jit::script::Module &gestureModel, bool &predicted, std::string &screenMsg)
 {
     std::vector<torch::jit::IValue> inputs;
-    torch::Tensor inputTensor = torch::zeros({ 1, keypoints * 2, framesPerSequence });
+    torch::Tensor inputTensor = torch::zeros({1, keypoints * 2, framesPerSequence});
 
     // Extracts keypoint location from the frames
     for (int i = 0; i < framesPerSequence; i++)
@@ -24,26 +24,26 @@ void predictGesture(cv::Mat (&sequence)[framesPerSequence], torch::jit::script::
         std::vector<std::map<float, cv::Point2f>> handKeypoints;
         std::vector<cv::Rect> handrect;
         handKeypoints = pyramidinference(handModel, sequence[i], handrect);
-           
+
         // Assigns the coordinates of the keypoints to the tensor, for each time step
         for (int j = 0; j < handKeypoints.size(); j++)
             if (!handKeypoints[j].empty())
             {
                 inputTensor[0][2 * j][i] = handKeypoints[j].begin()->second.x;
-                inputTensor[0][2 * j + 1][i] = handKeypoints[j].begin()->second.y;    
+                inputTensor[0][2 * j + 1][i] = handKeypoints[j].begin()->second.y;
             }
     }
-    
+
     // Forwards the input throught the model
     inputs.push_back(inputTensor);
     auto output = gestureModel.forward(inputs).toTensor();
-    
+
     screenMsg = "You performed " + std::string(gestureName[output.argmax(1).item().toInt()]);
     // Flag to exit the thread
     predicted = true;
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     // Loads the model for hand keypoints detection and gesture classification
     torch::jit::script::Module handModel = torch::jit::load("../hand.pts", torch::kCUDA);
@@ -53,7 +53,8 @@ int main(int argc, char** argv)
     // Opens the webcam
     cv::VideoCapture cap(0);
 
-    if (!cap.isOpened()) {
+    if (!cap.isOpened())
+    {
         std::cerr << "Unable to open camera" << std::endl;
         return -1;
     }
@@ -72,38 +73,41 @@ int main(int argc, char** argv)
         cv::Mat sequence[framesPerSequence];
 
         // Cam starts recording
-        while (1) 
-        {   
+        while (1)
+        {
             cap >> frame;
             putText(frame, screenMsg, cv::Point(20, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5,
                     cv::Scalar(0, 0, 255), 1);
             cv::imshow(window, frame);
-            
+
             int key = cv::waitKey(30);
             // Finishes the app any time the user presses Esc
-            if (key == 27) goto finish;
+            if (key == 27)
+                goto finish;
             // Starts storing the frames of the gesture after pressing any other button
             else if (key >= 0)
             {
                 for (int i = 0; i < framesPerSequence; i++)
                 {
                     cv::imshow(window, frame);
-                    cap >> frame; 
+                    cap >> frame;
                     key = cv::waitKey(63);
-                    if (key == 27) goto finish;
+                    if (key == 27)
+                        goto finish;
                     else if (key >= 0)
                         break;
                     sequence[i] = frame.clone();
                 }
-                
+
                 // Predicts the gesture in a thread
                 bool predicted = false;
-                std::thread thrd(std::ref(predictGesture), std::ref(sequence), 
-                                std::ref(handModel), std::ref(gestureModel),
-                                std::ref(predicted), std::ref(screenMsg));
-                
+                std::thread thrd(std::ref(predictGesture), std::ref(sequence),
+                                 std::ref(handModel), std::ref(gestureModel),
+                                 std::ref(predicted), std::ref(screenMsg));
+
                 // Continues with open camera while the gesture is being predicted
-                while (1) {
+                while (1)
+                {
                     cap >> frame;
                     putText(frame, "Predicting the gesture...", cv::Point(20, 20),
                             cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1);
@@ -122,6 +126,6 @@ int main(int argc, char** argv)
             }
         }
     }
-    finish:
-	return 0;
+finish:
+    return 0;
 }

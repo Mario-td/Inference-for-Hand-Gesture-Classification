@@ -3,4 +3,6 @@ HandGestureClassification.vcxproj
 HandGestureClassification.vcxproj.filters
 HandGestureClassification.vcxproj.user
 GPU.cpp
+.vscode
+build
 

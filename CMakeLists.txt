@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project( InferenceHandGestures )
 
+# list(APPEND CMAKE_PREFIX_PATH "~/libtorch")
 find_package(Torch REQUIRED)  
 
 find_package(OpenCV REQUIRED)
