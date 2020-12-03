@@ -13,35 +13,7 @@ const char *gestureName[] = {"WAWING", "SCISSORS", "FLIP", "PUSH&PULL", "OPEN&CL
 
 // Function for predicting the gesture from the sequence of frames
 void predictGesture(cv::Mat (&sequence)[framesPerSequence], torch::jit::script::Module &handModel,
-                    torch::jit::script::Module &gestureModel, bool &predicted, std::string &screenMsg)
-{
-    std::vector<torch::jit::IValue> inputs;
-    torch::Tensor inputTensor = torch::zeros({1, keypoints * 2, framesPerSequence});
-
-    // Extracts keypoint location from the frames
-    for (int i = 0; i < framesPerSequence; i++)
-    {
-        std::vector<std::map<float, cv::Point2f>> handKeypoints;
-        std::vector<cv::Rect> handrect;
-        handKeypoints = pyramidinference(handModel, sequence[i], handrect);
-
-        // Assigns the coordinates of the keypoints to the tensor, for each time step
-        for (int j = 0; j < handKeypoints.size(); j++)
-            if (!handKeypoints[j].empty())
-            {
-                inputTensor[0][2 * j][i] = handKeypoints[j].begin()->second.x;
-                inputTensor[0][2 * j + 1][i] = handKeypoints[j].begin()->second.y;
-            }
-    }
-
-    // Forwards the input throught the model
-    inputs.push_back(inputTensor);
-    auto output = gestureModel.forward(inputs).toTensor();
-
-    screenMsg = "You performed " + std::string(gestureName[output.argmax(1).item().toInt()]);
-    // Flag to exit the thread
-    predicted = true;
-}
+                    torch::jit::script::Module &gestureModel, bool &predicted, std::string &screenMsg);
 
 int main(int argc, char **argv)
 {
@@ -94,8 +66,6 @@ int main(int argc, char **argv)
                     key = cv::waitKey(63);
                     if (key == 27)
                         goto finish;
-                    else if (key >= 0)
-                        break;
                     sequence[i] = frame.clone();
                 }
 
@@ -118,7 +88,7 @@ int main(int argc, char **argv)
                         thrd.join();
                         goto finish;
                     }
-                    else if (key >= 0 || predicted)
+                    else if (predicted)
                         break;
                 }
                 thrd.join();
@@ -127,5 +97,37 @@ int main(int argc, char **argv)
         }
     }
 finish:
+    cap.release(); 
     return 0;
+}
+
+void predictGesture(cv::Mat (&sequence)[framesPerSequence], torch::jit::script::Module &handModel,
+                    torch::jit::script::Module &gestureModel, bool &predicted, std::string &screenMsg)
+{
+    std::vector<torch::jit::IValue> inputs;
+    torch::Tensor inputTensor = torch::zeros({1, keypoints * 2, framesPerSequence});
+
+    // Extracts keypoint location from the frames
+    for (int i = 0; i < framesPerSequence; i++)
+    {
+        std::vector<std::map<float, cv::Point2f>> handKeypoints;
+        std::vector<cv::Rect> handrect;
+        handKeypoints = pyramidinference(handModel, sequence[i], handrect);
+
+        // Assigns the coordinates of the keypoints to the tensor, for each time step
+        for (int j = 0; j < handKeypoints.size(); j++)
+            if (!handKeypoints[j].empty())
+            {
+                inputTensor[0][2 * j][i] = handKeypoints[j].begin()->second.x;
+                inputTensor[0][2 * j + 1][i] = handKeypoints[j].begin()->second.y;
+            }
+    }
+
+    // Forwards the input throught the model
+    inputs.push_back(inputTensor);
+    auto output = gestureModel.forward(inputs).toTensor();
+
+    screenMsg = "You performed " + std::string(gestureName[output.argmax(1).item().toInt()]);
+    // Flag to exit the thread
+    predicted = true;
 }
