@@ -6,9 +6,15 @@ This time, the neural network model is trained using Pytorch library and it is s
 After the application starts running, the user has to press the space bar and perform one of the 5 gestures for 2.5-3 seconds. Then the program predicts which gesture was performed.
 The hand keypoint detector model "hand.pts" and functions from the "handKeyPoints.cpp" file are implemented by the authors of a research paper[1]. 
 
-## Build
-Make sure to get the compatible NVIDIA drivers, CUDA v>=10.1, cuDNN v>=7.6, OpenCV4, and libtorch.
 
+## Prerequisites
+Make sure to get the compatible NVIDIA drivers and libraries:
+* [OpenCV 4.0.0+](https://github.com/opencv/opencv/releases) (with CUDA)
+* [LibTorch](https://pytorch.org/)
+* [CUDA 10.1+](https://developer.nvidia.com/cuda-downloads)
+* [CuDNN 7.6+](https://developer.nvidia.com/cuDNN)
+
+## Build
 Clone this repository 
 ```shell
 git clone https://github.com/Mario-td/Inference-for-Hand-Gesture-Classification.git
